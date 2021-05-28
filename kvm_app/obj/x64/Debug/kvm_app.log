@@ -1,0 +1,13 @@
+﻿  Validating sources
+  Copying sources remotely to '192.168.112.128'
+  Validating architecture
+  Starting remote build
+  Compiling sources:
+  kvmctl.cpp
+cc1plus : warning : -Wuninitialized is not supported without -O
+C:\Users\Administrator\source\repos\kvm_app\kvm_app\kvmctl.cpp(177,2): warning : no newline at end of file
+  main.cpp
+cc1plus : warning : -Wuninitialized is not supported without -O
+C:\Users\Administrator\source\repos\kvm_app\kvm_app\main.cpp(189,2): warning : no newline at end of file
+  Linking objects
+  kvm_app.vcxproj -> C:\Users\Administrator\source\repos\kvm_app\kvm_app\bin\x64\Debug\kvm_app.out
