@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.php": "php",
+        "hlpripc.h": "c",
+        "stdio.h": "c"
+    }
+}
