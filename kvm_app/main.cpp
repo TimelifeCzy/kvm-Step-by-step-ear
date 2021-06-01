@@ -169,19 +169,22 @@ int main(int ac, char **av)
 		load_file((void*)((int *)vm_mem + 0xf0000), av[1]);
 	if (ac > 2)
 		load_file ((void*)((int *)vm_mem + 0x100000), av[2]);
+	else {
+		load_file((void*)((int *)vm_mem + 0xf0000), "/root/kvm-module/kernel.bin");
+	}
 
 	kvm_show_regs(g_kvm, 0);
 
-	pthread_t thid;
-	printf("main thread,ID is %lu\n", pthread_self());
-	if (pthread_create(&thid, NULL, callback_thread, NULL) != 0)
-	{
-		printf("thread creation failed\n");
-		return 0;
-	}
+	//pthread_t thid;
+	//printf("main thread,ID is %lu\n", pthread_self());
+	//if (pthread_create(&thid, NULL, callback_thread, NULL) != 0)
+	//{
+	//	printf("thread creation failed\n");
+	//	return 0;
+	//}
 
 	// 给创建线程的机会
-	sleep(1);
+	// sleep(1);
 
 	kvm_run(g_kvm, 0);
 

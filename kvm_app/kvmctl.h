@@ -69,8 +69,8 @@ typedef struct kvm_context *kvm_context_t;
 struct kvm_memory_region {
 	__u32 slot;
 	__u32 flags;
-	__u64 guest_phys_addr;
-	__u64 memory_size; /* bytes */
+	unsigned long long guest_phys_addr;
+	unsigned long long memory_size; /* bytes */
 };
 
 
@@ -106,9 +106,9 @@ struct kvm_run {
 			__u8 rep;
 			__u8 pad;
 			__u16 port;
-			__u64 count;
+			unsigned long long count;
 			union {
-				__u64 address;
+				unsigned long long address;
 				__u32 value;
 			};
 		} io;
@@ -116,7 +116,7 @@ struct kvm_run {
 		} debug;
 		/* KVM_EXIT_MMIO */
 		struct {
-			__u64 phys_addr;
+			unsigned long long phys_addr;
 			__u8  data[8];
 			__u32 len;
 			__u8  is_write;
@@ -131,15 +131,15 @@ struct kvm_regs {
 	__u32 padding;
 
 	/* out (KVM_GET_REGS) / in (KVM_SET_REGS) */
-	__u64 rax, rbx, rcx, rdx;
-	__u64 rsi, rdi, rsp, rbp;
-	__u64 r8, r9, r10, r11;
-	__u64 r12, r13, r14, r15;
-	__u64 rip, rflags;
+	unsigned long long rax, rbx, rcx, rdx;
+	unsigned long long rsi, rdi, rsp, rbp;
+	unsigned long long r8, r9, r10, r11;
+	unsigned long long r12, r13, r14, r15;
+	unsigned long long rip, rflags;
 };
 
 struct kvm_segment {
-	__u64 base;
+	unsigned long long base;
 	__u32 limit;
 	__u16 selector;
 	__u8  type;
@@ -149,7 +149,7 @@ struct kvm_segment {
 };
 
 struct kvm_dtable {
-	__u64 base;
+	unsigned long long base;
 	__u16 limit;
 	__u16 padding[3];
 };
@@ -164,9 +164,9 @@ struct kvm_sregs {
 	struct kvm_segment cs, ds, es, fs, gs, ss;
 	struct kvm_segment tr, ldt;
 	struct kvm_dtable gdt, idt;
-	__u64 cr0, cr2, cr3, cr4, cr8;
-	__u64 efer;
-	__u64 apic_base;
+	unsigned long long cr0, cr2, cr3, cr4, cr8;
+	unsigned long long efer;
+	unsigned long long apic_base;
 
 	/* out (KVM_GET_SREGS) */
 	__u32 pending_int;
@@ -176,12 +176,12 @@ struct kvm_sregs {
 /* for KVM_TRANSLATE */
 struct kvm_translation {
 	/* in */
-	__u64 linear_address;
+	unsigned long long linear_address;
 	__u32 vcpu;
 	__u32 padding;
 
 	/* out */
-	__u64 physical_address;
+	unsigned long long physical_address;
 	__u8  valid;
 	__u8  writeable;
 	__u8  usermode;
@@ -197,7 +197,7 @@ struct kvm_interrupt {
 struct kvm_breakpoint {
 	__u32 enabled;
 	__u32 padding;
-	__u64 address;
+	unsigned long long address;
 };
 
 /* for KVM_DEBUG_GUEST */
@@ -224,19 +224,26 @@ struct kvm_debug_guest {
 #define KVM_CREATE_VCPU           _IOW(KVMIO, 11, int /* vcpu_slot */)
 #define KVM_GET_DIRTY_LOG         _IOW(KVMIO, 12, struct kvm_dirty_log)
 
-
 kvm_context_t kvm_init(struct kvm_callbacks *callbacks,
 	void *opaque);
-
 int kvm_create(kvm_context_t kvm,
 	unsigned long phys_mem_bytes,
-	void **vm_mem);
-
+	void **phys_mem);
+int kvm_run(kvm_context_t kvm, int vcpu);
+int kvm_get_regs(kvm_context_t, int vcpu, struct kvm_regs *regs);
+int kvm_set_regs(kvm_context_t, int vcpu, struct kvm_regs *regs);
+int kvm_get_sregs(kvm_context_t, int vcpu, struct kvm_sregs *regs);
+int kvm_set_sregs(kvm_context_t, int vcpu, struct kvm_sregs *regs);
+int kvm_inject_irq(kvm_context_t, int vcpu, unsigned irq);
+int kvm_guest_debug(kvm_context_t, int vcpu, struct kvm_debug_guest *dbg);
+void kvm_show_regs(kvm_context_t, int vcpu);
+void *kvm_create_phys_mem(kvm_context_t, unsigned long phys_start,
+	unsigned long len, int slot, int log, int writable);
+void kvm_destroy_phys_mem(kvm_context_t, unsigned long phys_start,
+	unsigned long len);
+void kvm_get_dirty_pages(kvm_context_t, int slot, void *buf);
 void load_file(void *mem, const char *fname);
 
-void kvm_show_regs(kvm_context_t kvm, int vcpu);
-
-int kvm_run(kvm_context_t kvm, int vcpu);
 
 #endif
 
