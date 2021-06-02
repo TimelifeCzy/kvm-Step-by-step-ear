@@ -85,12 +85,12 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <CLanguageStandard>c99</CLanguageStandard>
+      <CLanguageStandard>c11</CLanguageStandard>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <CppLanguageStandard>c++98</CppLanguageStandard>
+      <CppLanguageStandard>c++11</CppLanguageStandard>
       <UnrollLoops>false</UnrollLoops>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <CppAdditionalWarning>switch;no-deprecated-declarations;conversion;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;</CppAdditionalWarning>

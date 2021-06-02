@@ -1,15 +1,27 @@
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
+/*
+ * Kernel-based Virtual Machine test driver
+ *
+ * This test driver provides a simple way of testing kvm, without a full
+ * device model.
+ *
+ * Copyright (C) 2006 Qumranet
+ *
+ * Authors:
+ *
+ *  Avi Kivity <avi@qumranet.com>
+ *  Yaniv Kamay <yaniv@qumranet.com>
+ *
+ * This work is licensed under the GNU LGPL license, version 2.
+ */
 
 #include "kvmctl.h"
 
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
-kvm_context_t g_kvm;
-
+kvm_context_t kvm;
 
 static int test_cpuid(void *opaque, uint64_t *rax, uint64_t *rbx,
 	uint64_t *rcx, uint64_t *rdx)
@@ -43,7 +55,7 @@ static int test_outb(void *opaque, uint16_t addr, uint8_t value)
 	switch (addr) {
 	case 0xff: // irq injector
 		printf("injecting interrupt 0x%x\n", value);
-		//kvm_inject_irq(kvm, 0, value);
+		kvm_inject_irq(kvm, 0, value);
 		break;
 	case 0xf1: // serial
 		if (newline)
@@ -87,106 +99,108 @@ static int test_io_window(void *opaque)
 	return 0;
 }
 
- 
-static struct kvm_callbacks test_callbacks = { 
-	test_cpuid, 
-	test_inb,
-	test_inw,
-	test_inl,
-	test_outb,
-	test_outw,
-	test_outl,
-	test_debug,
-	test_halt,
-	test_io_window
+static int test_try_push_interrupts(void *opaque)
+{
+}
+
+static void test_post_kvm_run(void *opaque, struct kvm_run *kvm_run)
+{
+}
+
+static void test_pre_kvm_run(void *opaque, struct kvm_run *kvm_run)
+{
+}
+
+static struct kvm_callbacks test_callbacks = {
+	.cpuid = test_cpuid,
+	.inb = test_inb,
+	.inw = test_inw,
+	.inl = test_inl,
+	.outb = test_outb,
+	.outw = test_outw,
+	.outl = test_outl,
+	.debug = test_debug,
+	.halt = test_halt,
+	.io_window = test_io_window,
+	.try_push_interrupts = test_try_push_interrupts,
+	.post_kvm_run = test_post_kvm_run,
+	.pre_kvm_run = test_pre_kvm_run,
 };
 
 
-/*
-	循环等待r0回传
-*/
-void * callback_thread(void * arg)
+static void load_file(void *mem, const char *fname)
 {
-	pthread_t newthid;
-	newthid = pthread_self();
-	printf("this is a new thread,thread ID = %lu\n", newthid);
+	int r;
+	int fd;
 
-	int ser_socket = socket(AF_INET, SOCK_STREAM, 0);
-	///定义sockaddr_in
-	struct sockaddr_in server_sockaddr;
-	server_sockaddr.sin_family = AF_INET;
-	server_sockaddr.sin_port = htons(12345);
-	server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if (bind(ser_socket, (struct sockaddr*)&server_sockaddr, sizeof(server_sockaddr)) == -1)
-	{
-		perror("bind");
-		return 0;
+	fd = open(fname, O_RDONLY);
+	if (fd == -1) {
+		perror("open");
+		exit(1);
 	}
-
-	if (listen(ser_socket, 5) == -1)
-	{
-		perror("listen");
-		return 0;
+	while ((r = read(fd, mem, 4096)) != -1 && r != 0)
+		mem += r;
+	if (r == -1) {
+		perror("read");
+		exit(1);
 	}
-
-	int recv_size = 0;
-	char recve_buffer[1024] = { 0, };
-	struct sockaddr_in client_addr;
-	socklen_t length = sizeof(client_addr);
-
-	// 假设单线程 - 长连接
-	int conn = accept(ser_socket, (struct sockaddr*)&client_addr, &length);
-	if (conn < 0)
-	{
-		perror("connect");
-		return 0;
-	}
-
-	send(conn, "success", 8, 0);
-
-	while (true) {
-		recv(conn, recve_buffer, recv_size, 0);
-		if (0 == strcmp("break", recve_buffer))
-			break;
-
-		// 接收r0传入的数据
-	}
-
-	return NULL;
 }
 
+static void enter_32(kvm_context_t kvm)
+{
+	struct kvm_regs regs = {
+	.rsp = 0x80000,  /* 512KB */
+	.rip = 0x100000, /* 1MB */
+	.rflags = 2,
+	};
+	struct kvm_sregs sregs = {
+	.cs = { 0, -1u,  8, 11, 1, 0, 1, 1, 0, 1, 0, 0 },
+	.ds = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+	.es = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+	.fs = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+	.gs = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+	.ss = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+
+	.tr = { 0, 10000, 24, 11, 1, 0, 0, 0, 0, 0, 0, 0 },
+	.ldt = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
+	.gdt = { 0, 0 },
+	.idt = { 0, 0 },
+	.cr0 = 0x37,
+	.cr3 = 0,
+	.cr4 = 0,
+	.efer = 0,
+	.apic_base = 0,
+	.interrupt_bitmap = { 0 },
+	};
+
+	kvm_set_regs(kvm, 0, &regs);
+	kvm_set_sregs(kvm, 0, &sregs);
+}
 
 int main(int ac, char **av)
 {
-	void *vm_mem = NULL;
-    printf("hello from kvm_app!\n");
+	void *vm_mem;
 
-	g_kvm = kvm_init(&test_callbacks, 0);
-	kvm_create(g_kvm, 128 * 1024 * 1024, &vm_mem);
-
-	if (ac > 1)
-		load_file((void*)((int *)vm_mem + 0xf0000), av[1]);
-	if (ac > 2)
-		load_file ((void*)((int *)vm_mem + 0x100000), av[2]);
-	else {
-		load_file((void*)((int *)vm_mem + 0xf0000), "/root/kvm-module/kernel.bin");
+	kvm = kvm_init(&test_callbacks, 0);
+	if (!kvm) {
+		fprintf(stderr, "kvm_init failed\n");
+		return 1;
 	}
+	if (kvm_create(kvm, 128 * 1024 * 1024, &vm_mem) < 0) {
+		kvm_finalize(kvm);
+		fprintf(stderr, "kvm_create failed\n");
+		return 1;
+	}
+	if (ac > 1)
+		if (strcmp(av[1], "-32") != 0)
+			load_file(vm_mem + 0xf0000, av[1]);
+		else
+			enter_32(kvm);
+	if (ac > 2)
+		load_file(vm_mem + 0x100000, av[2]);
+	kvm_show_regs(kvm, 0);
 
-	kvm_show_regs(g_kvm, 0);
+	kvm_run(kvm, 0);
 
-	//pthread_t thid;
-	//printf("main thread,ID is %lu\n", pthread_self());
-	//if (pthread_create(&thid, NULL, callback_thread, NULL) != 0)
-	//{
-	//	printf("thread creation failed\n");
-	//	return 0;
-	//}
-
-	// 给创建线程的机会
-	// sleep(1);
-
-	kvm_run(g_kvm, 0);
-
-    return 0;
+	return 0;
 }

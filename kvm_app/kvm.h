@@ -1,7 +1,6 @@
 #ifndef __KVM_H
 #define __KVM_H
 
-#include <linux/types.h>
 #include "vmx.h"
 
 

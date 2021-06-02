@@ -1,12 +1,12 @@
 ﻿  Validating sources
-  Copying sources remotely to '192.168.112.128'
+  Copying sources remotely to '192.168.112.130'
   Validating architecture
   Starting remote build
   Compiling sources:
   kvmctl.cpp
-cc1plus : warning : -Wuninitialized is not supported without -O
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(473,2): warning : no newline at end of file
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(338): warning : unused variable ‘addr’
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(339): warning : unused variable ‘data’
+  main.cpp
   Linking objects
-  kvm_app.vcxproj -> E:\kvm-Step-by-step-ear\kvm_app\bin\x64\Debug\kvm_app.out
+/usr/bin/ld : error : 找不到 -lGL
+/usr/bin/ld : error : 找不到 -lGLU
+/usr/bin/ld : error : 找不到 -lglut
+collect2 : error : 错误：ld 返回 1

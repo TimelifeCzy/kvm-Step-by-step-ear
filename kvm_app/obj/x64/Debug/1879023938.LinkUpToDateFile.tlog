@@ -1,1 +1,0 @@
-g++ -o "/root/projects/kvm_app/bin/x64/Debug/kvm_app.out" -Wl,--no-undefined -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack /root/projects/kvm_app/obj/x64/Debug/kvmctl.o /root/projects/kvm_app/obj/x64/Debug/main.o -lm -lGL -lGLU -lglut
