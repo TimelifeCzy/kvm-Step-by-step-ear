@@ -1,250 +1,251 @@
-#pragma once
+/** \file kvmctl.h
+ * libkvm API
+ */
 
-#ifndef __LINUX_KVM_H
-#define __LINUX_KVM_H
+#ifndef KVMCTL_H
+#define KVMCTL_H
 
-
-#include <asm/types.h>
+#define __user /* temporary, until installed via make headers_install */
+#include "kvm.h"
 #include <stdint.h>
-
-#define KVM_MEM_LOG_DIRTY_PAGES  1UL
-
-
-#define KVM_EXIT_TYPE_FAIL_ENTRY 1
-#define KVM_EXIT_TYPE_VM_EXIT    2
-
-enum kvm_exit_reason {
-	KVM_EXIT_UNKNOWN = 0,
-	KVM_EXIT_EXCEPTION = 1,
-	KVM_EXIT_IO = 2,
-	KVM_EXIT_CPUID = 3,
-	KVM_EXIT_DEBUG = 4,
-   	KVM_EXIT_HLT = 5,
-	KVM_EXIT_MMIO = 6,
-	KVM_EXIT_IRQ_WINDOW_OPEN = 7,
-	KVM_EXIT_SHUTDOWN = 8,
-};
-
-
-
-struct translation_cache {
-	unsigned long linear;
-	void *physical;
-};
-
-struct kvm_callbacks {
-	int(*cpuid)(void *opaque,
-		uint64_t *rax, uint64_t *rbx, uint64_t *rcx, uint64_t *rdx);
-	int(*inb)(void *opaque, uint16_t addr, uint8_t *data);
-	int(*inw)(void *opaque, uint16_t addr, uint16_t *data);
-	int(*inl)(void *opaque, uint16_t addr, uint32_t *data);
-	int(*outb)(void *opaque, uint16_t addr, uint8_t data);
-	int(*outw)(void *opaque, uint16_t addr, uint16_t data);
-	int(*outl)(void *opaque, uint16_t addr, uint32_t data);
-	//int(*readb)(void *opaque, uint64_t addr, uint8_t *data);
-	//int(*readw)(void *opaque, uint64_t addr, uint16_t *data);
-	//int(*readl)(void *opaque, uint64_t addr, uint32_t *data);
-	//int(*readq)(void *opaque, uint64_t addr, uint64_t *data);
-	//int(*writeb)(void *opaque, uint64_t addr, uint8_t data);
-	//int(*writew)(void *opaque, uint64_t addr, uint16_t data);
-	//int(*writel)(void *opaque, uint64_t addr, uint32_t data);
-	//int(*writeq)(void *opaque, uint64_t addr, uint64_t data);
-	int(*debug)(void *opaque, int vcpu);
-	int(*halt)(void *opaque, int vcpu);
-	int(*io_window)(void *opaque);
-};
-
-struct kvm_context {
-	int fd;
-	struct kvm_callbacks *callbacks;
-	void *opaque;
-	void *physical_memory;
-};
 
 struct kvm_context;
 
 typedef struct kvm_context *kvm_context_t;
 
-/* for KVM_CREATE_MEMORY_REGION */
-struct kvm_memory_region {
-	__u32 slot;
-	__u32 flags;
-	unsigned long long guest_phys_addr;
-	unsigned long long memory_size; /* bytes */
+/*!
+ * \brief KVM callbacks structure
+ *
+ * This structure holds pointers to various functions that KVM will call
+ * when it encounters something that cannot be virtualized, such as
+ * accessing hardware devices via MMIO or regular IO.
+ */
+struct kvm_callbacks {
+	int(*cpuid)(void *opaque,
+		uint64_t *rax, uint64_t *rbx, uint64_t *rcx, uint64_t *rdx);
+	/// For 8bit IO reads from the guest (Usually when executing 'inb')
+	int(*inb)(void *opaque, uint16_t addr, uint8_t *data);
+	/// For 16bit IO reads from the guest (Usually when executing 'inw')
+	int(*inw)(void *opaque, uint16_t addr, uint16_t *data);
+	/// For 32bit IO reads from the guest (Usually when executing 'inl')
+	int(*inl)(void *opaque, uint16_t addr, uint32_t *data);
+	/// For 8bit IO writes from the guest (Usually when executing 'outb')
+	int(*outb)(void *opaque, uint16_t addr, uint8_t data);
+	/// For 16bit IO writes from the guest (Usually when executing 'outw')
+	int(*outw)(void *opaque, uint16_t addr, uint16_t data);
+	/// For 32bit IO writes from the guest (Usually when executing 'outl')
+	int(*outl)(void *opaque, uint16_t addr, uint32_t data);
+	/// For 8bit memory reads from unmapped memory (For MMIO devices)
+	int(*readb)(void *opaque, uint64_t addr, uint8_t *data);
+	/// For 16bit memory reads from unmapped memory (For MMIO devices)
+	int(*readw)(void *opaque, uint64_t addr, uint16_t *data);
+	/// For 32bit memory reads from unmapped memory (For MMIO devices)
+	int(*readl)(void *opaque, uint64_t addr, uint32_t *data);
+	/// For 64bit memory reads from unmapped memory (For MMIO devices)
+	int(*readq)(void *opaque, uint64_t addr, uint64_t *data);
+	/// For 8bit memory writes to unmapped memory (For MMIO devices)
+	int(*writeb)(void *opaque, uint64_t addr, uint8_t data);
+	/// For 16bit memory writes to unmapped memory (For MMIO devices)
+	int(*writew)(void *opaque, uint64_t addr, uint16_t data);
+	/// For 32bit memory writes to unmapped memory (For MMIO devices)
+	int(*writel)(void *opaque, uint64_t addr, uint32_t data);
+	/// For 64bit memory writes to unmapped memory (For MMIO devices)
+	int(*writeq)(void *opaque, uint64_t addr, uint64_t data);
+	int(*debug)(void *opaque, int vcpu);
+	/*!
+	 * \brief Called when the VCPU issues an 'hlt' instruction.
+	 *
+	 * Typically, you should yeild here to prevent 100% CPU utilization
+	 * on the host CPU.
+	 */
+	int(*halt)(void *opaque, int vcpu);
+	int(*io_window)(void *opaque);
+	int(*try_push_interrupts)(void *opaque);
+	void(*post_kvm_run)(void *opaque, struct kvm_run *kvm_run);
 };
 
-
-/* for KVM_RUN */
-struct kvm_run {
-	/* in */
-	__u32 vcpu;
-	__u32 emulated;  /* skip current instruction */
-	__u32 mmio_completed; /* mmio request completed */
-
-	/* out */
-	__u32 exit_type;
-	__u32 exit_reason;
-	__u32 instruction_length;
-	union {
-		/* KVM_EXIT_UNKNOWN */
-		struct {
-			__u32 hardware_exit_reason;
-		} hw;
-		/* KVM_EXIT_EXCEPTION */
-		struct {
-			__u32 exception;
-			__u32 error_code;
-		} ex;
-		/* KVM_EXIT_IO */
-		struct {
-#define KVM_EXIT_IO_IN  0
-#define KVM_EXIT_IO_OUT 1
-			__u8 direction;
-			__u8 size; /* bytes */
-			__u8 string;
-			__u8 string_down;
-			__u8 rep;
-			__u8 pad;
-			__u16 port;
-			unsigned long long count;
-			union {
-				unsigned long long address;
-				__u32 value;
-			};
-		} io;
-		struct {
-		} debug;
-		/* KVM_EXIT_MMIO */
-		struct {
-			unsigned long long phys_addr;
-			__u8  data[8];
-			__u32 len;
-			__u8  is_write;
-		} mmio;
-	};
-};
-
-/* for KVM_GET_REGS and KVM_SET_REGS */
-struct kvm_regs {
-	/* in */
-	__u32 vcpu;
-	__u32 padding;
-
-	/* out (KVM_GET_REGS) / in (KVM_SET_REGS) */
-	unsigned long long rax, rbx, rcx, rdx;
-	unsigned long long rsi, rdi, rsp, rbp;
-	unsigned long long r8, r9, r10, r11;
-	unsigned long long r12, r13, r14, r15;
-	unsigned long long rip, rflags;
-};
-
-struct kvm_segment {
-	unsigned long long base;
-	__u32 limit;
-	__u16 selector;
-	__u8  type;
-	__u8  present, dpl, db, s, l, g, avl;
-	__u8  unusable;
-	__u8  padding;
-};
-
-struct kvm_dtable {
-	unsigned long long base;
-	__u16 limit;
-	__u16 padding[3];
-};
-
-/* for KVM_GET_SREGS and KVM_SET_SREGS */
-struct kvm_sregs {
-	/* in */
-	__u32 vcpu;
-	__u32 padding;
-
-	/* out (KVM_GET_SREGS) / in (KVM_SET_SREGS) */
-	struct kvm_segment cs, ds, es, fs, gs, ss;
-	struct kvm_segment tr, ldt;
-	struct kvm_dtable gdt, idt;
-	unsigned long long cr0, cr2, cr3, cr4, cr8;
-	unsigned long long efer;
-	unsigned long long apic_base;
-
-	/* out (KVM_GET_SREGS) */
-	__u32 pending_int;
-	__u32 padding2;
-};
-
-/* for KVM_TRANSLATE */
-struct kvm_translation {
-	/* in */
-	unsigned long long linear_address;
-	__u32 vcpu;
-	__u32 padding;
-
-	/* out */
-	unsigned long long physical_address;
-	__u8  valid;
-	__u8  writeable;
-	__u8  usermode;
-};
-
-/* for KVM_INTERRUPT */
-struct kvm_interrupt {
-	/* in */
-	__u32 vcpu;
-	__u32 irq;
-};
-
-struct kvm_breakpoint {
-	__u32 enabled;
-	__u32 padding;
-	unsigned long long address;
-};
-
-/* for KVM_DEBUG_GUEST */
-struct kvm_debug_guest {
-	/* int */
-	__u32 vcpu;
-	__u32 enabled;
-	struct kvm_breakpoint breakpoints[4];
-	__u32 singlestep;
-};
-
-
-#define KVMIO 0xAE
-
-#define KVM_RUN                   _IOWR(KVMIO, 2, struct kvm_run)
-#define KVM_GET_REGS              _IOWR(KVMIO, 3, struct kvm_regs)
-#define KVM_SET_REGS              _IOW(KVMIO, 4, struct kvm_regs)
-#define KVM_GET_SREGS             _IOWR(KVMIO, 5, struct kvm_sregs)
-#define KVM_SET_SREGS             _IOW(KVMIO, 6, struct kvm_sregs)
-#define KVM_TRANSLATE             _IOWR(KVMIO, 7, struct kvm_translation)
-#define KVM_INTERRUPT             _IOW(KVMIO, 8, struct kvm_interrupt)
-#define KVM_DEBUG_GUEST           _IOW(KVMIO, 9, struct kvm_debug_guest)
-#define KVM_SET_MEMORY_REGION     _IOW(KVMIO, 10, struct kvm_memory_region)
-#define KVM_CREATE_VCPU           _IOW(KVMIO, 11, int /* vcpu_slot */)
-#define KVM_GET_DIRTY_LOG         _IOW(KVMIO, 12, struct kvm_dirty_log)
-
+/*!
+ * \brief Create new KVM context
+ *
+ * This creates a new kvm_context. A KVM context is a small area of data that
+ * holds information about the KVM instance that gets created by this call.\n
+ * This should always be your first call to KVM.
+ *
+ * \param callbacks Pointer to a valid kvm_callbacks structure
+ * \param opaque Not used
+ * \return NULL on failure
+ */
 kvm_context_t kvm_init(struct kvm_callbacks *callbacks,
 	void *opaque);
+
+/*!
+ * \brief Cleanup the KVM context
+ *
+ * Should always be called when closing down KVM.\n
+ * Exception: If kvm_init() fails, this function should not be called, as the
+ * context would be invalid
+ *
+ * \param kvm Pointer to the kvm_context that is to be freed
+ */
+void kvm_finalize(kvm_context_t kvm);
+
+/*!
+ * \brief Create new virtual machine
+ *
+ * This creates a new virtual machine, maps physical RAM to it, and creates a
+ * virtual CPU for it.\n
+ * \n
+ * Memory gets mapped for addresses 0->0xA0000, 0xC0000->phys_mem_bytes
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param phys_mem_bytes The amount of physical ram you want the VM to have
+ * \param phys_mem This pointer will be set to point to the memory that
+ * kvm_create allocates for physical RAM
+ * \return 0 on success
+ */
 int kvm_create(kvm_context_t kvm,
 	unsigned long phys_mem_bytes,
 	void **phys_mem);
+
+/*!
+ * \brief Start the VCPU
+ *
+ * This starts the VCPU and virtualization is started.\n
+ * \n
+ * This function will not return until any of these conditions are met:
+ * - An IO/MMIO handler does not return "0"
+ * - An exception that neither the guest OS, nor KVM can handle occurs
+ *
+ * \note This function will call the callbacks registered in kvm_init()
+ * to emulate those functions
+ * \note If you at any point want to interrupt the VCPU, kvm_run() will
+ * listen to the EINTR signal. This allows you to simulate external interrupts
+ * and asyncronous IO.
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should be started
+ * \return 0 on success, but you really shouldn't expect this function to
+ * return except for when an error has occured, or when you have sent it
+ * an EINTR signal.
+ */
 int kvm_run(kvm_context_t kvm, int vcpu);
-int kvm_get_regs(kvm_context_t, int vcpu, struct kvm_regs *regs);
-int kvm_set_regs(kvm_context_t, int vcpu, struct kvm_regs *regs);
-int kvm_get_sregs(kvm_context_t, int vcpu, struct kvm_sregs *regs);
-int kvm_set_sregs(kvm_context_t, int vcpu, struct kvm_sregs *regs);
-int kvm_inject_irq(kvm_context_t, int vcpu, unsigned irq);
+
+/*!
+ * \brief Read VCPU registers
+ *
+ * This gets the GP registers from the VCPU and outputs them
+ * into a kvm_regs structure
+ *
+ * \note This function returns a \b copy of the VCPUs registers.\n
+ * If you wish to modify the VCPUs GP registers, you should call kvm_set_regs()
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \param regs Pointer to a kvm_regs which will be populated with the VCPUs
+ * registers values
+ * \return 0 on success
+ */
+int kvm_get_regs(kvm_context_t kvm, int vcpu, struct kvm_regs *regs);
+
+/*!
+ * \brief Write VCPU registers
+ *
+ * This sets the GP registers on the VCPU from a kvm_regs structure
+ *
+ * \note When this function returns, the regs pointer and the data it points to
+ * can be discarded
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \param regs Pointer to a kvm_regs which will be populated with the VCPUs
+ * registers values
+ * \return 0 on success
+ */
+int kvm_set_regs(kvm_context_t kvm, int vcpu, struct kvm_regs *regs);
+
+/*!
+ * \brief Read VCPU system registers
+ *
+ * This gets the non-GP registers from the VCPU and outputs them
+ * into a kvm_sregs structure
+ *
+ * \note This function returns a \b copy of the VCPUs registers.\n
+ * If you wish to modify the VCPUs non-GP registers, you should call
+ * kvm_set_sregs()
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \param regs Pointer to a kvm_sregs which will be populated with the VCPUs
+ * registers values
+ * \return 0 on success
+ */
+int kvm_get_sregs(kvm_context_t kvm, int vcpu, struct kvm_sregs *regs);
+
+/*!
+ * \brief Write VCPU system registers
+ *
+ * This sets the non-GP registers on the VCPU from a kvm_sregs structure
+ *
+ * \note When this function returns, the regs pointer and the data it points to
+ * can be discarded
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \param regs Pointer to a kvm_sregs which will be populated with the VCPUs
+ * registers values
+ * \return 0 on success
+ */
+int kvm_set_sregs(kvm_context_t kvm, int vcpu, struct kvm_sregs *regs);
+
+struct kvm_msr_list *kvm_get_msr_list(kvm_context_t);
+int kvm_get_msrs(kvm_context_t, int vcpu, struct kvm_msr_entry *msrs, int n);
+int kvm_set_msrs(kvm_context_t, int vcpu, struct kvm_msr_entry *msrs, int n);
+
+/*!
+ * \brief Simulate an external vectored interrupt
+ *
+ * This allows you to simulate an external vectored interrupt.
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \param irq Vector number
+ * \return 0 on success
+ */
+int kvm_inject_irq(kvm_context_t kvm, int vcpu, unsigned irq);
 int kvm_guest_debug(kvm_context_t, int vcpu, struct kvm_debug_guest *dbg);
-void kvm_show_regs(kvm_context_t, int vcpu);
+
+/*!
+ * \brief Dump all VCPU information
+ *
+ * This dumps \b all the information that KVM has about a virtual CPU, namely:
+ * - GP Registers
+ * - System registers (selectors, descriptors, etc)
+ * - VMCS Data
+ * - MSRS
+ * - Pending interrupts
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \return 0 on success
+ */
+int kvm_dump_vcpu(kvm_context_t kvm, int vcpu);
+
+/*!
+ * \brief Dump VCPU registers
+ *
+ * This dumps some of the information that KVM has about a virtual CPU, namely:
+ * - GP Registers
+ *
+ * A much more verbose version of this is available as kvm_dump_vcpu()
+ *
+ * \param kvm Pointer to the current kvm_context
+ * \param vcpu Which virtual CPU should get dumped
+ * \return 0 on success
+ */
+void kvm_show_regs(kvm_context_t kvm, int vcpu);
+
 void *kvm_create_phys_mem(kvm_context_t, unsigned long phys_start,
 	unsigned long len, int slot, int log, int writable);
 void kvm_destroy_phys_mem(kvm_context_t, unsigned long phys_start,
 	unsigned long len);
 void kvm_get_dirty_pages(kvm_context_t, int slot, void *buf);
-void load_file(void *mem, const char *fname);
-
 
 #endif
-
-

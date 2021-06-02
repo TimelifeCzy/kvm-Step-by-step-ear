@@ -17,9 +17,10 @@
 #include "kvmctl.h"
 
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include <sys/unistd.h>
+#include <sys/fcntl.h>
 #include <stdlib.h>
+#include <string>
 
 kvm_context_t kvm;
 
@@ -107,10 +108,6 @@ static void test_post_kvm_run(void *opaque, struct kvm_run *kvm_run)
 {
 }
 
-static void test_pre_kvm_run(void *opaque, struct kvm_run *kvm_run)
-{
-}
-
 static struct kvm_callbacks test_callbacks = {
 	.cpuid = test_cpuid,
 	.inb = test_inb,
@@ -124,7 +121,6 @@ static struct kvm_callbacks test_callbacks = {
 	.io_window = test_io_window,
 	.try_push_interrupts = test_try_push_interrupts,
 	.post_kvm_run = test_post_kvm_run,
-	.pre_kvm_run = test_pre_kvm_run,
 };
 
 
@@ -139,7 +135,7 @@ static void load_file(void *mem, const char *fname)
 		exit(1);
 	}
 	while ((r = read(fd, mem, 4096)) != -1 && r != 0)
-		mem += r;
+		mem = (void*)((int)mem + r);
 	if (r == -1) {
 		perror("read");
 		exit(1);
@@ -148,30 +144,29 @@ static void load_file(void *mem, const char *fname)
 
 static void enter_32(kvm_context_t kvm)
 {
-	struct kvm_regs regs = {
-	.rsp = 0x80000,  /* 512KB */
-	.rip = 0x100000, /* 1MB */
-	.rflags = 2,
-	};
-	struct kvm_sregs sregs = {
-	.cs = { 0, -1u,  8, 11, 1, 0, 1, 1, 0, 1, 0, 0 },
-	.ds = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
-	.es = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
-	.fs = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
-	.gs = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
-	.ss = { 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 },
+	struct kvm_regs regs = { 0, };
+	regs.rsp = 0x80000;  /* 512KB */
+	regs.rip = 0x100000; /* 1MB */
+	regs.rflags = 2;
 
-	.tr = { 0, 10000, 24, 11, 1, 0, 0, 0, 0, 0, 0, 0 },
-	.ldt = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
-	.gdt = { 0, 0 },
-	.idt = { 0, 0 },
-	.cr0 = 0x37,
-	.cr3 = 0,
-	.cr4 = 0,
-	.efer = 0,
-	.apic_base = 0,
-	.interrupt_bitmap = { 0 },
-	};
+	struct kvm_sregs sregs = { 0, };
+	sregs.cs = (kvm_segment){ 0, -1u,  8, 11, 1, 0, 1, 1, 0, 1, 0, 0 };
+	sregs.ds = (kvm_segment){ 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 };
+	sregs.es = (kvm_segment){ 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 };
+	sregs.fs = (kvm_segment){ 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 };
+	sregs.gs = (kvm_segment){ 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 };
+	sregs.ss = (kvm_segment){ 0, -1u, 16,  3, 1, 0, 1, 1, 0, 1, 0, 0 };
+
+	sregs.tr = (kvm_segment) { 0, 10000, 24, 11, 1, 0, 0, 0, 0, 0, 0, 0 };
+	sregs.ldt = (kvm_segment) { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+	sregs.gdt = (kvm_dtable) { 0, 0 };
+	sregs.idt = (kvm_dtable) { 0, 0 };
+	sregs.cr0 = 0x37;
+	sregs.cr3 = 0;
+	sregs.cr4 = 0;
+	sregs.efer = 0;
+	sregs.apic_base = 0;
+	memset(sregs.interrupt_bitmap, 0, sizeof(sregs.interrupt_bitmap));
 
 	kvm_set_regs(kvm, 0, &regs);
 	kvm_set_sregs(kvm, 0, &sregs);
@@ -193,11 +188,11 @@ int main(int ac, char **av)
 	}
 	if (ac > 1)
 		if (strcmp(av[1], "-32") != 0)
-			load_file(vm_mem + 0xf0000, av[1]);
+			load_file((void*)((unsigned long long)vm_mem + 0xf0000), av[1]);
 		else
 			enter_32(kvm);
 	if (ac > 2)
-		load_file(vm_mem + 0x100000, av[2]);
+		load_file((void*)((unsigned long long)vm_mem + 0x100000), av[2]);
 	kvm_show_regs(kvm, 0);
 
 	kvm_run(kvm, 0);
