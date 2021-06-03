@@ -13,13 +13,6 @@ struct kvm_context;
 
 typedef struct kvm_context *kvm_context_t;
 
-/*!
- * \brief KVM callbacks structure
- *
- * This structure holds pointers to various functions that KVM will call
- * when it encounters something that cannot be virtualized, such as
- * accessing hardware devices via MMIO or regular IO.
- */
 struct kvm_callbacks {
 	int(*cpuid)(void *opaque,
 		uint64_t *rax, uint64_t *rbx, uint64_t *rcx, uint64_t *rdx);
@@ -35,6 +28,17 @@ struct kvm_callbacks {
 	int(*outw)(void *opaque, uint16_t addr, uint16_t data);
 	/// For 32bit IO writes from the guest (Usually when executing 'outl')
 	int(*outl)(void *opaque, uint16_t addr, uint32_t data);
+	int(*debug)(void *opaque, int vcpu);
+	/*!
+	 * \brief Called when the VCPU issues an 'hlt' instruction.
+	 *
+	 * Typically, you should yeild here to prevent 100% CPU utilization
+	 * on the host CPU.
+	 */
+	int(*halt)(void *opaque, int vcpu);
+	int(*io_window)(void *opaque);
+	int(*try_push_interrupts)(void *opaque);
+	void(*post_kvm_run)(void *opaque, struct kvm_run *kvm_run);
 	/// For 8bit memory reads from unmapped memory (For MMIO devices)
 	int(*readb)(void *opaque, uint64_t addr, uint8_t *data);
 	/// For 16bit memory reads from unmapped memory (For MMIO devices)
@@ -51,17 +55,6 @@ struct kvm_callbacks {
 	int(*writel)(void *opaque, uint64_t addr, uint32_t data);
 	/// For 64bit memory writes to unmapped memory (For MMIO devices)
 	int(*writeq)(void *opaque, uint64_t addr, uint64_t data);
-	int(*debug)(void *opaque, int vcpu);
-	/*!
-	 * \brief Called when the VCPU issues an 'hlt' instruction.
-	 *
-	 * Typically, you should yeild here to prevent 100% CPU utilization
-	 * on the host CPU.
-	 */
-	int(*halt)(void *opaque, int vcpu);
-	int(*io_window)(void *opaque);
-	int(*try_push_interrupts)(void *opaque);
-	void(*post_kvm_run)(void *opaque, struct kvm_run *kvm_run);
 };
 
 /*!

@@ -13,38 +13,23 @@
  *
  * This work is licensed under the GNU LGPL license, version 2.
  */
-
 #include <sys/ioctl.h>
 #include <sys/unistd.h>
 #include <sys/fcntl.h>
+#include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <string.h>
 #include <errno.h>
+
 #include "kvmctl.h"
-
-
-#define EXPECTED_KVM_API_VERSION 2
-
-//#if EXPECTED_KVM_API_VERSION != KVM_API_VERSION
-////#error libkvm: userspace and kernel version mismatch
-//#endif
 
 #define PAGE_SIZE 4096ul
 
- /**
-  * \brief The KVM context
-  *
-  * The verbose KVM context
-  */
 struct kvm_context {
-	/// Filedescriptor to /dev/kvm
 	int fd;
-	/// Callbacks that KVM uses to emulate various unvirtualizable functionality
 	struct kvm_callbacks *callbacks;
 	void *opaque;
-	/// A pointer to the memory used as the physical memory for the guest
 	void *physical_memory;
 };
 
@@ -79,9 +64,9 @@ static int translate(kvm_context_t kvm, int vcpu, struct translation_cache *tr,
 			return -EFAULT;
 
 		tr->linear = page;
-		tr->physical = (void*)((__u64)kvm->physical_memory + kvm_tr.physical_address);
+		tr->physical = (void*)((unsigned long long)kvm->physical_memory + kvm_tr.physical_address);
 	}
-	*physical = (void*)((unsigned long)tr->physical + offset);
+	*physical = (void*)((unsigned long long)tr->physical + offset);
 	return 0;
 }
 
@@ -90,34 +75,17 @@ kvm_context_t kvm_init(struct kvm_callbacks *callbacks,
 {
 	int fd;
 	kvm_context_t kvm;
-	int r;
 
 	fd = open("/dev/kvm", O_RDWR);
 	if (fd == -1) {
-		perror("open /dev/kvm");
+		perror("open");
 		return NULL;
-	}
-	r = ioctl(fd, KVM_GET_API_VERSION, 0);
-	if (r == -1) {
-		fprintf(stderr, "kvm kernel version too old\n");
-		goto out_close;
-	}
-	if (r < EXPECTED_KVM_API_VERSION) {
-		fprintf(stderr, "kvm kernel version too old\n");
-		goto out_close;
-	}
-	if (r > EXPECTED_KVM_API_VERSION) {
-		fprintf(stderr, "kvm userspace version too old\n");
-		goto out_close;
 	}
 	kvm = (kvm_context_t)malloc(sizeof(*kvm));
 	kvm->fd = fd;
 	kvm->callbacks = callbacks;
 	kvm->opaque = opaque;
 	return kvm;
-out_close:
-	close(fd);
-	return NULL;
 }
 
 void kvm_finalize(kvm_context_t kvm)
@@ -178,12 +146,11 @@ void *kvm_create_phys_mem(kvm_context_t kvm, unsigned long phys_start,
 	int r;
 	int fd = kvm->fd;
 	int prot = PROT_READ;
-	struct kvm_memory_region memory = {
-		.slot = slot,
-		.memory_size = len,
-		.guest_phys_addr = phys_start,
-		.flags = log ? KVM_MEM_LOG_DIRTY_PAGES : 0,
-	};
+	struct kvm_memory_region memory = { 0, };
+	memory.slot = slot;
+	memory.memory_size = len;
+	memory.guest_phys_addr = phys_start;
+	memory.flags = log ? KVM_MEM_LOG_DIRTY_PAGES : 0;
 
 	r = ioctl(fd, KVM_SET_MEMORY_REGION, &memory);
 	if (r == -1)
@@ -209,9 +176,8 @@ void kvm_destroy_phys_mem(kvm_context_t kvm, unsigned long phys_start,
 void kvm_get_dirty_pages(kvm_context_t kvm, int slot, void *buf)
 {
 	int r;
-	struct kvm_dirty_log log = {
-		.slot = slot,
-	};
+	struct kvm_dirty_log log = { 0, };
+	log.slot = slot;
 
 	log.dirty_bitmap = buf;
 
@@ -371,14 +337,13 @@ struct kvm_msr_list *kvm_get_msr_list(kvm_context_t kvm)
 
 	sizer.nmsrs = 0;
 	r = ioctl(kvm->fd, KVM_GET_MSR_INDEX_LIST, &sizer);
-	if (r == -1 && errno != E2BIG)
+	if (r == -1)
 		return 0;
 	msrs = (kvm_msr_list*)malloc(sizeof *msrs + sizer.nmsrs * sizeof *msrs->indices);
 	if (!msrs) {
 		errno = ENOMEM;
 		return 0;
 	}
-	msrs->nmsrs = sizer.nmsrs;
 	r = ioctl(kvm->fd, KVM_GET_MSR_INDEX_LIST, msrs);
 	if (r == -1) {
 		e = errno;
@@ -524,31 +489,17 @@ static int handle_halt(kvm_context_t kvm, struct kvm_run *kvm_run)
 	return kvm->callbacks->halt(kvm->opaque, kvm_run->vcpu);
 }
 
-int try_push_interrupts(kvm_context_t kvm)
-{
-	return kvm->callbacks->try_push_interrupts(kvm->opaque);
-}
-
-static void post_kvm_run(kvm_context_t kvm, struct kvm_run *kvm_run)
-{
-	kvm->callbacks->post_kvm_run(kvm->opaque, kvm_run);
-}
-
 int kvm_run(kvm_context_t kvm, int vcpu)
 {
 	int r;
 	int fd = kvm->fd;
-	struct kvm_run kvm_run = {
-		.vcpu = vcpu,
-		.emulated = 0,
-		.mmio_completed = 0,
-	};
+	struct kvm_run kvm_run = { 0, };
+	kvm_run.vcpu = vcpu;
+	kvm_run.emulated = 0;
+	kvm_run.mmio_completed = 0;
 
 again:
-	kvm_run.request_interrupt_window = try_push_interrupts(kvm);
 	r = ioctl(fd, KVM_RUN, &kvm_run);
-	post_kvm_run(kvm, &kvm_run);
-
 	kvm_run.emulated = 0;
 	kvm_run.mmio_completed = 0;
 	if (r == -1 && errno != EINTR) {
@@ -593,8 +544,6 @@ again:
 			break;
 		case KVM_EXIT_HLT:
 			r = handle_halt(kvm, &kvm_run);
-			break;
-		case KVM_EXIT_IRQ_WINDOW_OPEN:
 			break;
 		default:
 			fprintf(stderr, "unhandled vm exit: 0x%x\n", kvm_run.exit_reason);

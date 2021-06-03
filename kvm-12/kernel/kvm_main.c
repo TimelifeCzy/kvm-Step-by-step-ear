@@ -2048,16 +2048,17 @@ hpa_t bad_page_address;
 int kvm_init_arch(struct kvm_arch_ops *ops, struct module *module)
 {
 	int r;
-
+	printk(KERN_EMERG "[+]kvm_init_arch\n"); 
 	if (kvm_arch_ops) {
 		printk(KERN_ERR "kvm: already loaded the other module\n");
 		return -EEXIST;
 	}
-
+	printk(KERN_EMERG "[+]cpu_has_kvm_support\n"); 
 	if (!ops->cpu_has_kvm_support()) {
 		printk(KERN_ERR "kvm: no hardware support\n");
 		return -EOPNOTSUPP;
 	}
+	printk(KERN_EMERG "[+]disabled_by_bios\n"); 
 	if (ops->disabled_by_bios()) {
 		printk(KERN_ERR "kvm: disabled by bios\n");
 		return -EOPNOTSUPP;
@@ -2074,12 +2075,14 @@ int kvm_init_arch(struct kvm_arch_ops *ops, struct module *module)
 
 	kvm_chardev_ops.owner = module;
 
+	printk(KERN_EMERG "[+]misc device register\n"); 
 	r = misc_register(&kvm_dev);
 	if (r) {
 		printk (KERN_ERR "kvm: misc device register failed\n");
 		goto out_free;
 	}
 
+	printk(KERN_EMERG "[+]init kvm success\n"); 
 	return r;
 
 out_free:
@@ -2105,7 +2108,7 @@ static __init int kvm_init(void)
 	int r = 0;
 
 	kvm_init_debug();
-
+	printk(KERN_EMERG "[+]kvm_init_debug\n"); 
 	kvm_init_msr_list();
 
 	if ((bad_page = alloc_page(GFP_KERNEL)) == NULL) {
@@ -2115,11 +2118,12 @@ static __init int kvm_init(void)
 
 	bad_page_address = page_to_pfn(bad_page) << PAGE_SHIFT;
 	memset(__va(bad_page_address), 0, PAGE_SIZE);
-
+	printk(KERN_EMERG "[+]kvm_init Exit\n"); 
 	return r;
 
 out:
 	kvm_exit_debug();
+	printk(KERN_EMERG "[+]kvm_exit_debug\n"); 
 	return r;
 }
 

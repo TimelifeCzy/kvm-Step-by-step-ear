@@ -5,27 +5,9 @@
   Compiling sources:
   kvmctl.cpp
 cc1plus : warning : -Wuninitialized is not supported without -O
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(182): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(183): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(184): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(185): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(213): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(542): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(543): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\kvmctl.cpp(544): error : expected primary-expression before ‘.’ token
   main.cpp
 cc1plus : warning : -Wuninitialized is not supported without -O
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(201,2): warning : no newline at end of file
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(112): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(113): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(114): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(115): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(116): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(117): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(118): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(119): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(120): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(121): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(122): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(123): error : expected primary-expression before ‘.’ token
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(138): error : cast from ‘void*’ to ‘int’ loses precision
+E:\kvm-Step-by-step-ear\kvm_app\main.cpp(198,2): warning : no newline at end of file
+E:\kvm-Step-by-step-ear\kvm_app\main.cpp(102): warning : control reaches end of non-void function
+  Linking objects
+  kvm_app.vcxproj -> E:\kvm-Step-by-step-ear\kvm_app\bin\x64\Debug\kvm_app.out

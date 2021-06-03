@@ -15,12 +15,9 @@
  */
 
 #include "kvmctl.h"
-
-#include <stdio.h>
-#include <sys/unistd.h>
 #include <sys/fcntl.h>
-#include <stdlib.h>
 #include <string>
+#include <string.h>
 
 kvm_context_t kvm;
 
@@ -109,18 +106,18 @@ static void test_post_kvm_run(void *opaque, struct kvm_run *kvm_run)
 }
 
 static struct kvm_callbacks test_callbacks = {
-	.cpuid = test_cpuid,
-	.inb = test_inb,
-	.inw = test_inw,
-	.inl = test_inl,
-	.outb = test_outb,
-	.outw = test_outw,
-	.outl = test_outl,
-	.debug = test_debug,
-	.halt = test_halt,
-	.io_window = test_io_window,
-	.try_push_interrupts = test_try_push_interrupts,
-	.post_kvm_run = test_post_kvm_run,
+	test_cpuid,
+	test_inb,
+	test_inw,
+	test_inl,
+	test_outb,
+	test_outw,
+	test_outl,
+	test_debug,
+	test_halt,
+	test_io_window,
+	test_try_push_interrupts,
+	test_post_kvm_run
 };
 
 
@@ -135,7 +132,7 @@ static void load_file(void *mem, const char *fname)
 		exit(1);
 	}
 	while ((r = read(fd, mem, 4096)) != -1 && r != 0)
-		mem = (void*)((int)mem + r);
+		mem = (void*)((int*)mem + r);
 	if (r == -1) {
 		perror("read");
 		exit(1);
@@ -188,11 +185,11 @@ int main(int ac, char **av)
 	}
 	if (ac > 1)
 		if (strcmp(av[1], "-32") != 0)
-			load_file((void*)((unsigned long long)vm_mem + 0xf0000), av[1]);
+			load_file((void*)((int*)vm_mem + 0xf0000), av[1]);
 		else
 			enter_32(kvm);
 	if (ac > 2)
-		load_file((void*)((unsigned long long)vm_mem + 0x100000), av[2]);
+		load_file((void*)((int*)vm_mem + 0x100000), av[2]);
 	kvm_show_regs(kvm, 0);
 
 	kvm_run(kvm, 0);
