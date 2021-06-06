@@ -183,6 +183,7 @@ int main(int ac, char **av)
 		fprintf(stderr, "kvm_create failed\n");
 		return 1;
 	}
+
 	if (ac > 1)
 		if (strcmp(av[1], "-32") != 0)
 			load_file((void*)((int*)vm_mem + 0xf0000), av[1]);

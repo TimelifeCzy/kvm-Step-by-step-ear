@@ -3,11 +3,9 @@
   Validating architecture
   Starting remote build
   Compiling sources:
-  kvmctl.cpp
-cc1plus : warning : -Wuninitialized is not supported without -O
   main.cpp
 cc1plus : warning : -Wuninitialized is not supported without -O
-E:\kvm-Step-by-step-ear\kvm_app\main.cpp(198,2): warning : no newline at end of file
+E:\kvm-Step-by-step-ear\kvm_app\main.cpp(199,2): warning : no newline at end of file
 E:\kvm-Step-by-step-ear\kvm_app\main.cpp(102): warning : control reaches end of non-void function
   Linking objects
   kvm_app.vcxproj -> E:\kvm-Step-by-step-ear\kvm_app\bin\x64\Debug\kvm_app.out

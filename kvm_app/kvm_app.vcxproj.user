@@ -4,6 +4,7 @@
     <RemoteTarget>1879023938;192.168.112.128 (username=, port=22, authentication=Password)</RemoteTarget>
     <PreLaunchCommand>export DISPLAY=:0.0</PreLaunchCommand>
     <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <RemoteDebuggerCommandArguments>/root/mini-guest/kernel.bin</RemoteDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <RemoteTarget>-908391549;192.168.112.129 (username=, port=22, authentication=Password)</RemoteTarget>
